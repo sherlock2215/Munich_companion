@@ -32,7 +32,7 @@ def timed_deleting():
                         keys_to_delete.append(k)
                 for key in keys_to_delete:
                     del l.groups[key]
-        time.sleep(1)
+        time.sleep(3600*6)
 
 
 def delete_group(location_id:str, group_id:uuid.UUID):

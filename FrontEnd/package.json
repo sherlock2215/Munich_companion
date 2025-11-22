@@ -1,6 +1,7 @@
 {
   "name": "munich-companion-frontend",
   "version": "1.0.0",
+  "type": "module",
   "description": "",
   "main": "app.jsx",
   "scripts": {
