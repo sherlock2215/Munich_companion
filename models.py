@@ -13,3 +13,4 @@ class EventCreation(BaseModel):
     lng: float              #Längengrad
     creator_name: str       #Max Mustermann
 
+
