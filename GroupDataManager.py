@@ -1,41 +1,83 @@
 import json
+import threading
+import time
 import uuid
+from time import sleep
 
 from pydantic import BaseModel, Field, model_validator
 from typing import List, Optional, Any, Tuple, Dict
-from datetime import date
+from datetime import date, timedelta
 from models import UserModel, GroupModel, LocationModel
 
 
 locations_db: Dict[str, LocationModel] = {}
+DB_LOCK = threading.Lock()
 
+
+def run_deleter_in_background():
+    deletion_thread = threading.Thread(target=timed_deleting)
+    deletion_thread.daemon = True
+
+    deletion_thread.start()
+    print("Hintergrund-Löschung gestartet.")
+
+
+def timed_deleting():
+    while(True):
+        with DB_LOCK:
+            for l in locations_db.values():
+                keys_to_delete = []
+                for k,g in l.groups.items():
+                    if g.date < date.today():
+                        keys_to_delete.append(k)
+                for key in keys_to_delete:
+                    del l.groups[key]
+        time.sleep(1)
+
+
+def delete_group(location_id:str, group_id:uuid.UUID):
+    with DB_LOCK:
+        if location_id not in locations_db:
+            print("Location not found")
+            return False
+        else:
+            location = locations_db[location_id]
+            if group_id not in location.groups:
+                print("Group not found")
+                return False
+            else:
+                del location.groups[group_id]
+                return True
 
 def join_group(location_id: str, group_id: uuid.UUID, user: UserModel):
-    if location_id in locations_db:
-        location = locations_db[location_id]
-        groups = location.groups
-        if group_id in groups:
-            group = groups[group_id]
-            min_age, max_age = group.age_range
-            if min_age <= user.age <= max_age:
-                if any(m.user_id == user.user_id for m in group.members):
-                    print("You cant join a Group twice")
-                    return False
+    with DB_LOCK:
+        if location_id in locations_db:
+            location = locations_db[location_id]
+            groups = location.groups
+            if group_id in groups:
+                group = groups[group_id]
+                min_age, max_age = group.age_range
+                if min_age <= user.age <= max_age:
+                    if any(m.user_id == user.user_id for m in group.members):
+                        print("You cant join a Group twice")
+                        return False
+                    else:
+                        group.members.append(user)
+                        return True
                 else:
-                    group.members.append(user)
-                    return True
+                    print("You dont fit the age restrictions of this Group")
+                    return False
             else:
-                print("You dont fit the age restrictions of this Group")
+                print("Group was not found at the location")
                 return False
         else:
-            print("Group was not found at the location")
+            print("this location doesnt have any groups yet")
             return False
-    else:
-        print("this location doesnt have any groups yet")
-        return False
 
 
 def create_group(location_id: str, title: str, description: str, age_range: Tuple[int,int], gdate: date, host: UserModel):
+    if len(locations_db) == 0:
+        run_deleter_in_background()
     group_id = uuid.uuid4()
     group = GroupModel(
         group_id = group_id,
@@ -46,42 +88,56 @@ def create_group(location_id: str, title: str, description: str, age_range: Tupl
         host_id= host.user_id,
         members=[host]
     )
-    if location_id in locations_db:
-        location = locations_db[location_id]
-        if group_id in location.groups:
-            print("Something went wrong, pls try again")
-            return False
-        location.groups[group_id] = group
-        return True
-    else:
-        groups: Dict[uuid.UUID, GroupModel] = {}
-        location = LocationModel(
-            location_id = location_id,
-            groups = groups
-        )
-        locations_db[location_id] = location
-        return True
+    with DB_LOCK:
+        if location_id in locations_db:
+            location = locations_db[location_id]
+            if group_id in location.groups:
+                print("Something went wrong, pls try again")
+                return False
+            location.groups[group_id] = group
+            return True
+        else:
+            groups: Dict[uuid.UUID, GroupModel] = {group_id: group}
+            location = LocationModel(
+                location_id = location_id,
+                groups = groups
+            )
+            locations_db[location_id] = location
+            return group
 
 
 def get_groups_by_location(locations : List[str]):
     json_list = []
-    for location in locations:
-        if location in locations_db:
-            current_location =  locations_db[location]
-            json_output = current_location.model_dump_json(indent=4)
-            json_list.append(json_output)
-        else:
-            raise ValueError(f"Location '{location}' not found!.")
+    with DB_LOCK:
+        for location in locations:
+            if location in locations_db:
+                current_location =  locations_db[location]
+                json_output = current_location.model_dump_json(indent=4)
+                json_list.append(json_output)
+            else:
+                raise ValueError(f"Location '{location}' not found!.")
     return json_list
 
 
 
 
+user_1 = UserModel(user_id=1, name="Anna", age=25, gender="weiblich")
+user_2 = UserModel(user_id=2, name="Bernd", age=28, gender="männlich")
+g = create_group("1", "Deutsches Museum", "test", (10,30), date.today(), user_1)
+join_group("1", g.group_id, user_2)
+g2 = create_group("2", "d", "d", (10,30), date.today()-(timedelta(days=1)), user_1)
+sleep(10)
+for json in get_groups_by_location(["1","2"]):
+    print(json)
 
 
 
 
 
+
+
+
+"""
 user_1 = UserModel(user_id=1, name="Anna", age=25, gender="weiblich")
 user_2 = UserModel(user_id=2, name="Bernd", age=28, gender="männlich")
 
@@ -136,3 +192,4 @@ locations_db["Kino"] = test_location2
 
 
 get_groups_by_location(["3241", "Kino"])
+"""
