@@ -121,13 +121,13 @@ def send_message(location_id: str, group_id: uuid.UUID, user: UserModel, content
     with DB_LOCK:
         if location_id not in locations_db:
             print("Location not found")
-            return False
+            return None
 
         location = locations_db[location_id]
 
         if group_id not in location.groups:
             print("Group not found")
-            return False
+            return None
 
         group = location.groups[group_id]
 
@@ -135,7 +135,7 @@ def send_message(location_id: str, group_id: uuid.UUID, user: UserModel, content
 
         if not is_member:
             print("You cant write in chats where you arent a member! What the hell did you do????")
-            return False
+            return None
 
         new_message = ChatMessageModel(
             sender_id=user.user_id,
@@ -147,7 +147,7 @@ def send_message(location_id: str, group_id: uuid.UUID, user: UserModel, content
 
         group.chat_history.append(new_message)
         print(f"Message sent by {user.name}.")
-        return True
+        return new_message
 
 
 def get_chat_history(location_id: str, group_id: uuid.UUID, user_id: int):

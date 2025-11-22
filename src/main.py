@@ -1,10 +1,12 @@
+import uuid
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-
-from src.models import *
+from watchfiles import awatch
+from app import MunichCompanion
+from models import *
 from mood_service import DirectMoodMapper
-from src import GroupDataManager as db
+import GroupDataManager as db
 
 
 class CreateGroupRequest(BaseModel):
@@ -26,6 +28,36 @@ class SendMessageRequest(BaseModel):
     user: UserModel
     content: str
 
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: Dict[uuid.UUID, List[WebSocket]] = {}
+
+    async def connect(self, websocket: WebSocket, group_id: uuid.UUID):
+        await websocket.accept()
+        if group_id not in self.active_connections:
+            self.active_connections[group_id] = []
+        self.active_connections[group_id].append(websocket)
+        print(f"Client connected to group {group_id}")
+
+    def disconnect(self, websocket: WebSocket, group_id: uuid.UUID):
+        if group_id in self.active_connections:
+            if websocket in self.active_connections[group_id]:
+                self.active_connections[group_id].remove(websocket)
+            if not self.active_connections[group_id]:
+                del self.active_connections[group_id]
+        print(f"Client disconnected from group {group_id}")
+
+    async def broadcast(self, message: dict, group_id: uuid.UUID):
+        if group_id in self.active_connections:
+            for connection in self.active_connections[group_id][:]:
+                try:
+                    await connection.send_json(message)
+                except Exception as e:
+                    print(f"Error broadcasting: {e}")
+
+
+connection_manager = ConnectionManager()
+chatbot = MunichCompanion()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -107,14 +139,56 @@ def join_existing_group(req: JoinGroupRequest):
         return {"status": "success", "message": "Joined group successfully"}
 
 @app.post("/chat/send")
-def send_chat_message(req: SendMessageRequest):
-    success = db.send_message(location_id=req.location_id, group_id=req.group_id, user=req.user, content=req.content)
-    if not success:
+async def send_chat_message(req: SendMessageRequest):
+    created_message = db.send_message(location_id=req.location_id, group_id=req.group_id, user=req.user, content=req.content)
+    if created_message is None:
         raise HTTPException(status_code=403, detail="Could not send message. User might not be in the group.")
     else:
+        message_dict = created_message.model_dump(mode='json')
+        await connection_manager.broadcast(message_dict, req.group_id)
         return {"status": "success", "message": "Message sent"}
 
 @app.get("/chat/history")
 def get_chat_history(location_id: str, group_id: uuid.UUID, user_id: int):
     history = db.get_chat_history(location_id, group_id, user_id)
     return history
+
+
+@app.get("/chatbot/user")
+def chatbot_user_interaction(user_input: str, lat: float, lng: float):
+    try:
+        location_data = {"lat": lat, "lng": lng}
+        response = chatbot.ask(user_input, location=location_data)
+        return {"response": response}
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        print(f"Chatbot Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/chatbot/automatic")
+def chatbot_automatet_interaction(lat: float, lng: float):
+    try:
+        location_data = {"lat": lat, "lng": lng}
+        response = chatbot.ask("Can you give me any fun facts about my nearby location?", location=location_data)
+        valid_response = chatbot.ask_automated(response)
+        if "no" in valid_response:
+            return {"response": ""}
+        else:
+            return {"response": response}
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        print(f"Chatbot Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.websocket("/ws/{group_id}")
+async def websocket_endpoint(websocket: WebSocket, group_id: uuid.UUID):
+    await connection_manager.connect(websocket, group_id)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        connection_manager.disconnect(websocket, group_id)
