@@ -1,31 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import {
-    User,
-    ArrowRight,
-    MapPin,
-    MessageCircle,
-    Heart,
-    LogOut,
-    Mail,
-    Github,
-    UserCircle2,
-    CheckCircle2,
-    Mountain
-} from 'lucide-react';
 
-export default function App() {
-    // App States: 'login', 'setup', 'dashboard'
-    const [currentView, setCurrentView] = useState('loading');
-    const [userData, setUserData] = useState({
-        isLoggedIn: false,
-        email: '',
-        name: '',
-        age: '',
-        gender: '',
-        interests: []
-    });
 
-    // Initialer Check auf localStorage beim Laden
     useEffect(() => {
         const storedUser = localStorage.getItem('munichConnectUser');
         if (storedUser) {
@@ -333,18 +307,4 @@ export default function App() {
         );
     };
 
-    // --- MAIN RENDER SWITCH ---
-
-    if (currentView === 'loading') return null;
-
-    switch (currentView) {
-        case 'login':
-            return <LoginScreen />;
-        case 'setup':
-            return <SetupScreen />;
-        case 'dashboard':
-            return <Dashboard />;
-        default:
-            return <LoginScreen />;
-    }
-}
+    export default LoginScreen;
