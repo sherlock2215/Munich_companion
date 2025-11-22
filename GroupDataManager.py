@@ -10,7 +10,7 @@ from models import UserModel, GroupModel, LocationModel
 locations_db: Dict[str, LocationModel] = {}
 
 
-def join_group(location_id: str, group_id: int, user: UserModel):
+def join_group(location_id: str, group_id: uuid.UUID, user: UserModel):
     if location_id in locations_db:
         location = locations_db[location_id]
         groups = location.groups
