@@ -1,0 +1,22 @@
+# --- Python Basics ---
+__pycache__/
+*.pyc
+
+# --- Virtuelle Umgebungen (WICHTIG!) ---
+# Egal wie du deinen venv ordner genannt hast, schreib ihn hier rein:
+venv/
+.venv/
+env/
+
+# --- IDE Einstellungen (muss nicht jeder im Team haben) ---
+.idea/
+.vscode/
+
+# --- Deine lokalen Datenbanken / JSON Dumps ---
+# Wenn du nicht willst, dass deine Test-Datenbanken im Git landen:
+*.json
+# ODER nur spezifische Dateien:
+locations_export.json
+
+# --- Sensible Daten ---
+.env
