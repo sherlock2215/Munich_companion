@@ -1,4 +1,5 @@
 import json
+import uuid
 from pydantic import BaseModel, Field, model_validator
 from typing import List, Optional, Any, Tuple, Dict
 from datetime import date
@@ -11,7 +12,7 @@ class UserModel(BaseModel):
     gender: str
 
 class GroupModel(BaseModel):
-    group_id: int
+    group_id: uuid.UUID
     title: str
     description: str
     age_range: Tuple[int,int]
@@ -21,4 +22,4 @@ class GroupModel(BaseModel):
 
 class LocationModel(BaseModel):
     location_id: str
-    groups: Dict[int, GroupModel] = {}
+    groups: Dict[uuid.UUID, GroupModel] = {}

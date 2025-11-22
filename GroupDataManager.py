@@ -1,4 +1,6 @@
 import json
+import uuid
+
 from pydantic import BaseModel, Field, model_validator
 from typing import List, Optional, Any, Tuple, Dict
 from datetime import date
@@ -31,6 +33,34 @@ def join_group(location_id: str, group_id: int, user: UserModel):
     else:
         print("this location doesnt have any groups yet")
         return False
+
+
+def create_group(location_id: str, title: str, description: str, age_range: Tuple[int,int], gdate: date, host: UserModel):
+    group_id = uuid.uuid4()
+    group = GroupModel(
+        group_id = group_id,
+        title = title,
+        description= description,
+        age_range= age_range,
+        date= gdate,
+        host_id= host.user_id,
+        members=[host]
+    )
+    if location_id in locations_db:
+        location = locations_db[location_id]
+        if group_id in location.groups:
+            print("Something went wrong, pls try again")
+            return False
+        location.groups[group_id] = group
+        return True
+    else:
+        groups: Dict[uuid.UUID, GroupModel] = {}
+        location = LocationModel(
+            location_id = location_id,
+            groups = groups
+        )
+        locations_db[location_id] = location
+        return True
 
 
 def get_groups_by_location(locations : List[str]):
