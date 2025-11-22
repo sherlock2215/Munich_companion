@@ -34,13 +34,15 @@ def join_group(location_id: str, group_id: int, user: UserModel):
 
 
 def get_groups_by_location(locations : List[str]):
+    json_list = []
     for location in locations:
         if location in locations_db:
             current_location =  locations_db[location]
             json_output = current_location.model_dump_json(indent=4)
-            print(json_output)
+            json_list.append(json_output)
         else:
-            print("Location not found.")
+            raise ValueError(f"Location '{location}' not found!.")
+    return json_list
 
 
 
