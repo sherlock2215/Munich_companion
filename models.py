@@ -8,5 +8,8 @@ class EventCreation(BaseModel):
     description: str        #Bringt Bier mit!
     category: str           #"Party" "Freunde finden"
     date: datetime
-    location_name: str      #
+    location_name: str      #"Isar"
+    lat: float              #Breitengrad
+    lng: float              #Längengrad
+    creator_name: str       #Max Mustermann
 
