@@ -1,6 +1,7 @@
 import json
 import requests
 from config import API_KEY, API_URL
+from datetime import datetime
 
 class MunichCompanion:
 
@@ -8,7 +9,7 @@ class MunichCompanion:
         self.api_key = API_KEY
         self.api_url = API_URL
 
-    def ask(self, user_input,location=None):
+    def ask(self, user_input,location=None, available_groups=None):
         if not self.api_key:
             raise ValueError("API key is missing")
 
@@ -17,6 +18,9 @@ class MunichCompanion:
             "X-goog-api-key": self.api_key
         }
 
+
+
+
         prompt = (
             "You are a friendly and knowledgeable Munich companion chatbot. "
             "You guide international students and newcomers, helping them with settling in, social life, culture, and well-being. "
@@ -24,7 +28,9 @@ class MunichCompanion:
             "If it is fitting add some Baverian slang and explain it"
             "Also mention how our Munich Companion app supports users. Keep answers under 5 lines.\n\n"
             f"User Location: {location if location else 'Unknown'}\n"
+            f"User date and time: {datetime.now()}"
             f"User: {user_input}"
+            "If the user input has nothing todo with Munich or the Munich Companion, give friendly feedback that this is off topic"
         )
 
         data = {"contents": [{"parts": [{"text": prompt}]}]}
