@@ -159,6 +159,7 @@ def save_geojson_to_file(geojson_data, filename=None):
 
 
 # USAGE
+"""
 if __name__ == "__main__":
     mapper = DirectMoodMapper()
 
@@ -183,3 +184,4 @@ if __name__ == "__main__":
 
     # Also print to console
     print(json.dumps(result, indent=2, ensure_ascii=False))
+"""

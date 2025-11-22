@@ -32,4 +32,3 @@ class GroupModel(BaseModel):
 class LocationModel(BaseModel):
     location_id: str
     groups: Dict[uuid.UUID, GroupModel] = {}
-

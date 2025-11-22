@@ -76,8 +76,6 @@ def join_group(location_id: str, group_id: uuid.UUID, user: UserModel):
 
 
 def create_group(location_id: str, title: str, description: str, age_range: Tuple[int,int], gdate: date, host: UserModel):
-    if len(locations_db) == 0:
-        run_deleter_in_background()
     group_id = uuid.uuid4()
     group = GroupModel(
         group_id = group_id,
@@ -93,9 +91,9 @@ def create_group(location_id: str, title: str, description: str, age_range: Tupl
             location = locations_db[location_id]
             if group_id in location.groups:
                 print("Something went wrong, pls try again")
-                return False
+                return None
             location.groups[group_id] = group
-            return True
+            return group
         else:
             groups: Dict[uuid.UUID, GroupModel] = {group_id: group}
             location = LocationModel(
@@ -173,7 +171,7 @@ def get_chat_history(location_id: str, group_id: uuid.UUID, user_id: int):
 
 
 
-
+"""
 user_1 = UserModel(user_id=1, name="Anna", age=25, gender="weiblich")
 user_2 = UserModel(user_id=2, name="Bernd", age=28, gender="männlich")
 g = create_group("1", "Deutsches Museum", "test", (10,30), date.today(), user_1)
@@ -185,7 +183,7 @@ for json in get_groups_by_location(["1","2"]):
 send_message("1",g.group_id, user_1, "test")
 li = get_chat_history("1", g.group_id, user_2.user_id)
 print(li)
-
+"""
 
 
 
