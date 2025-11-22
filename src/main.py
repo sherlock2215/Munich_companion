@@ -3,8 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from watchfiles import awatch
-
-
+from app import MunichCompanion
 from models import *
 from mood_service import DirectMoodMapper
 import GroupDataManager as db
@@ -58,6 +57,7 @@ class ConnectionManager:
 
 
 connection_manager = ConnectionManager()
+chatbot = MunichCompanion()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -152,6 +152,36 @@ async def send_chat_message(req: SendMessageRequest):
 def get_chat_history(location_id: str, group_id: uuid.UUID, user_id: int):
     history = db.get_chat_history(location_id, group_id, user_id)
     return history
+
+
+@app.get("/chatbot/user")
+def chatbot_user_interaction(user_input: str, lat: float, lng: float):
+    try:
+        location_data = {"lat": lat, "lng": lng}
+        response = chatbot.ask(user_input, location=location_data)
+        return {"response": response}
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        print(f"Chatbot Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/chatbot/automatic")
+def chatbot_automatet_interaction(lat: float, lng: float):
+    try:
+        location_data = {"lat": lat, "lng": lng}
+        response = chatbot.ask("Can you give me any fun facts about my nearby location?", location=location_data)
+        valid_response = chatbot.ask_automated(response)
+        if "no" in valid_response:
+            return {"response": ""}
+        else:
+            return {"response": response}
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        print(f"Chatbot Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.websocket("/ws/{group_id}")
