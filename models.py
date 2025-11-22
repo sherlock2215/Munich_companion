@@ -2,7 +2,15 @@ import json
 import uuid
 from pydantic import BaseModel, Field, model_validator
 from typing import List, Optional, Any, Tuple, Dict
-from datetime import date
+from datetime import date, datetime
+
+
+class ChatMessageModel(BaseModel):
+    sender_id: int
+    sender_name: str
+    group_id: uuid.UUID
+    content: str
+    timestamp: datetime = Field(default_factory=datetime.now)
 
 
 class UserModel(BaseModel):
@@ -19,7 +27,9 @@ class GroupModel(BaseModel):
     date: date
     host_id: int
     members: List[UserModel] = Field(default_factory=list)
+    chat_history: List[ChatMessageModel] = Field(default_factory=list)
 
 class LocationModel(BaseModel):
     location_id: str
     groups: Dict[uuid.UUID, GroupModel] = {}
+

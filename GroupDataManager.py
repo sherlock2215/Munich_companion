@@ -7,7 +7,7 @@ from time import sleep
 from pydantic import BaseModel, Field, model_validator
 from typing import List, Optional, Any, Tuple, Dict
 from datetime import date, timedelta
-from models import UserModel, GroupModel, LocationModel
+from models import *
 
 
 locations_db: Dict[str, LocationModel] = {}
@@ -119,6 +119,59 @@ def get_groups_by_location(locations : List[str]):
     return json_list
 
 
+def send_message(location_id: str, group_id: uuid.UUID, user: UserModel, content: str):
+    with DB_LOCK:
+        if location_id not in locations_db:
+            print("Location not found")
+            return False
+
+        location = locations_db[location_id]
+
+        if group_id not in location.groups:
+            print("Group not found")
+            return False
+
+        group = location.groups[group_id]
+
+        is_member = any(m.user_id == user.user_id for m in group.members)
+
+        if not is_member:
+            print("You cant write in chats where you arent a member! What the hell did you do????")
+            return False
+
+        new_message = ChatMessageModel(
+            sender_id=user.user_id,
+            sender_name=user.name,
+            group_id=group.group_id,
+            content=content,
+            timestamp=datetime.now()
+        )
+
+        group.chat_history.append(new_message)
+        print(f"Message sent by {user.name}.")
+        return True
+
+
+def get_chat_history(location_id: str, group_id: uuid.UUID, user_id: int):
+    with DB_LOCK:
+        if location_id not in locations_db:
+            return []
+
+        location = locations_db[location_id]
+        if group_id not in location.groups:
+            return []
+
+        group = location.groups[group_id]
+
+        is_member = any(m.user_id == user_id for m in group.members)
+        if not is_member:
+            print("Accesse denied: You are not a member.")
+            return []
+
+        return group.chat_history
+
+
+
 
 
 user_1 = UserModel(user_id=1, name="Anna", age=25, gender="weiblich")
@@ -126,10 +179,12 @@ user_2 = UserModel(user_id=2, name="Bernd", age=28, gender="männlich")
 g = create_group("1", "Deutsches Museum", "test", (10,30), date.today(), user_1)
 join_group("1", g.group_id, user_2)
 g2 = create_group("2", "d", "d", (10,30), date.today()-(timedelta(days=1)), user_1)
-sleep(10)
+#sleep(10)
 for json in get_groups_by_location(["1","2"]):
     print(json)
-
+send_message("1",g.group_id, user_1, "test")
+li = get_chat_history("1", g.group_id, user_2.user_id)
+print(li)
 
 
 
