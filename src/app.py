@@ -18,6 +18,23 @@ class MunichCompanion:
             "X-goog-api-key": self.api_key
         }
 
+        groups_context_text = ""
+        if available_groups and len(available_groups) > 0:
+            groups_list = []
+            for g in available_groups:
+                info = (f"- GROUP: '{g.get('title')}' "
+                        f"(Topic: {g.get('description')}, "
+                        f"Age: {g.get('age_range')}, "
+                        f"Date: {g.get('date')})")
+                groups_list.append(info)
+            groups_context_text = (
+                    "There are active social groups nearby the user right now! "
+                    "If the user asks for company, events, or what to do, and one or more group fits his request you MUST ALSO RECOMMEND these groups:\n"
+                    + "\n".join(groups_list) + "\n"
+                                               "Tell the user they can join these groups in the app.\n\n"
+            )
+        else:
+            groups_context_text = "There are currently no active user groups nearby.\n\n"
 
 
 
@@ -27,6 +44,7 @@ class MunichCompanion:
             "If location is provided, give meaningful local insights, fun facts, or nearby suggestions. "
             "If it is fitting add some Baverian slang and explain it"
             "Also mention how our Munich Companion app supports users. Keep answers under 5 lines.\n\n"
+            f"{groups_context_text}"
             f"User Location: {location if location else 'Unknown'}\n"
             f"User date and time: {datetime.now()}"
             f"User: {user_input}"

@@ -24,7 +24,8 @@ class DirectMoodMapper:
             "🍽️ Food Tour": {'types': ['restaurant', 'cafe'], 'keywords': 'food restaurant'},
             "⚽ Sports & Activities": {'types': ['stadium', 'gym'], 'keywords': 'sports activity'},
             "👨‍👨‍👧 Family Friendly": {'types': ['amusement_park', 'zoo'], 'keywords': 'family kids'},
-            "💫 Hidden Gems": {'types': [], 'keywords': 'unique local hidden'}
+            "💫 Hidden Gems": {'types': [], 'keywords': 'unique local hidden'},
+            "🌍 Everything": {'types': ['point_of_interest'], 'keywords': ''}
         }
 
         config = mood_configs.get(mood, {})

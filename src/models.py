@@ -31,4 +31,6 @@ class GroupModel(BaseModel):
 
 class LocationModel(BaseModel):
     location_id: str
+    lat: float = 0.0
+    lng: float = 0.0
     groups: Dict[uuid.UUID, GroupModel] = {}

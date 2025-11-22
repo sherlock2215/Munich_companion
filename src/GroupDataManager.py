@@ -1,6 +1,10 @@
 import json
 import threading
 import time
+import math
+import googlemaps
+import os
+from dotenv import load_dotenv
 import uuid
 from time import sleep
 
@@ -9,6 +13,9 @@ from typing import List, Optional, Any, Tuple, Dict
 from datetime import date, timedelta
 from models import *
 
+load_dotenv()
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+gmaps_client = googlemaps.Client(key=GOOGLE_API_KEY)
 
 locations_db: Dict[str, LocationModel] = {}
 DB_LOCK = threading.Lock()
@@ -21,7 +28,6 @@ def run_deleter_in_background():
     deletion_thread.start()
     print("Hintergrund-Löschung gestartet.")
 
-
 def timed_deleting():
     while(True):
         with DB_LOCK:
@@ -33,6 +39,18 @@ def timed_deleting():
                 for key in keys_to_delete:
                     del l.groups[key]
         time.sleep(3600*6)
+
+
+def fetch_coordinates_from_google(place_id: str) -> Tuple[float, float]:
+    try:
+        result = gmaps_client.place(place_id, fields=['geometry'])
+        if result['status'] == 'OK':
+            loc = result['result']['geometry']['location']
+            return loc['lat'], loc['lng']
+    except Exception as e:
+        print(f"Error fetching coords for {place_id}: {e}")
+    # Fallback (München Zentrum)
+    return 48.137, 11.575
 
 
 def delete_group(location_id:str, group_id:uuid.UUID):
@@ -95,14 +113,16 @@ def create_group(location_id: str, title: str, description: str, age_range: Tupl
             location.groups[group_id] = group
             return group
         else:
+            lat, lng = fetch_coordinates_from_google(location_id)
             groups: Dict[uuid.UUID, GroupModel] = {group_id: group}
             location = LocationModel(
                 location_id = location_id,
+                lat = lat,
+                lng = lng,
                 groups = groups
             )
             locations_db[location_id] = location
             return group
-
 
 def get_groups_by_location(locations : List[str]):
     json_list = []
@@ -112,9 +132,29 @@ def get_groups_by_location(locations : List[str]):
                 current_location =  locations_db[location]
                 json_output = current_location.model_dump_json(indent=4)
                 json_list.append(json_output)
-            else:
-                raise ValueError(f"Location '{location}' not found!.")
+            #else:
+                #raise ValueError(f"Location '{location}' not found!.")
     return json_list
+
+
+def get_nearby_groups(user_lat: float, user_lng: float, radius_km: float = 3.0) -> List[Dict]:
+    nearby_groups = []
+    with DB_LOCK:
+        for loc in locations_db.values():
+            if loc.lat == 0.0 and loc.lng == 0.0:
+                continue
+
+            # Euklidische Distanz-Schätzung für München (1° Lat ~ 111km, 1° Lng ~ 74km), from Gemini
+            lat_diff = (loc.lat - user_lat) * 111
+            lng_diff = (loc.lng - user_lng) * 74
+            dist_km = math.sqrt(lat_diff ** 2 + lng_diff ** 2)
+            if dist_km <= radius_km:
+                loc_data = loc.model_dump(mode='json')
+                for group in loc.groups.values():
+                    g_data = group.model_dump(mode='json')
+                    g_data['location_id'] = loc.location_id
+                    nearby_groups.append(g_data)
+    return nearby_groups
 
 
 def send_message(location_id: str, group_id: uuid.UUID, user: UserModel, content: str):

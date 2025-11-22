@@ -158,7 +158,8 @@ def get_chat_history(location_id: str, group_id: uuid.UUID, user_id: int):
 def chatbot_user_interaction(user_input: str, lat: float, lng: float):
     try:
         location_data = {"lat": lat, "lng": lng}
-        response = chatbot.ask(user_input, location=location_data)
+        active_groups = db.get_nearby_groups(lat, lng, radius_km=4.0)
+        response = chatbot.ask(user_input, location=location_data, available_groups=active_groups)
         return {"response": response}
     except ValueError as e:
         raise HTTPException(status_code=500, detail=str(e))
