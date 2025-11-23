@@ -117,6 +117,11 @@ def get_groups_for_user(user_id: int):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/map/nearby/groups")
+def get_nearby_groups(lat: float, lng: float, radius:float):
+    nearby_groups = db.get_nearby_groups(lat, lng, radius)
+    return nearby_groups
+
 
 @app.get("/api/map/nearby")
 def get_places_nearby(
