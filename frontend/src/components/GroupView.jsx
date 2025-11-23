@@ -1,14 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ApiService } from '../services/api';
-// WICHTIG: ChatRoom wird jetzt von extern importiert und NICHT mehr hier definiert
 import ChatRoom from './ChatRoom';
 import { ArrowLeft, Users, MessageCircle, Plus, CheckCircle } from 'lucide-react';
 
 // --- HAUPT VIEW (Liste & Erstellen) ---
-// Die Komponente ist jetzt viel kürzer, da der Chat ausgelagert wurde.
 const GroupView = ({ place, user, onBack }) => {
     const [groups, setGroups] = useState([]);
-    const [view, setView] = useState("list"); // "list", "create", "chat"
+    const [view, setView] = useState("list");
     const [activeGroup, setActiveGroup] = useState(null);
     const [loading, setLoading] = useState(false);
 
@@ -22,8 +20,19 @@ const GroupView = ({ place, user, onBack }) => {
     const loadGroups = async () => {
         setLoading(true);
         try {
+            // 1. Ruft Daten ab (data ist Array von LocationModel-Objekten)
             const data = await ApiService.getGroupsAtLocation(place.properties.id);
-            setGroups(data || []);
+
+            let flatGroups = [];
+
+            if (data && data.length > 0 && data[0].groups) {
+                // 2. EXTRAKTION: Wir nehmen das 'groups'-Dictionary aus dem ersten LocationModel
+                // und konvertieren es in eine flache Liste von GroupModel-Objekten.
+                flatGroups = Object.values(data[0].groups);
+            }
+
+            setGroups(flatGroups); // Setze die korrekte, flache Liste
+
         } catch (err) {
             console.error("Error loading groups:", err);
             setGroups([]);
@@ -32,15 +41,35 @@ const GroupView = ({ place, user, onBack }) => {
         }
     };
 
+
     const handleCreate = async () => {
-        if(!newGroup.title) return alert("Title required!");
+        // --- PRÄVENTIVE VALIDIERUNG ---
+        const title = newGroup.title.trim();
+        const minAge = parseInt(newGroup.minAge);
+        const maxAge = parseInt(newGroup.maxAge);
+
+        if (!title) {
+            return alert("Title is required!");
+        }
+
+        // Prüfen, ob Alter gültige Zahlen sind und im Rahmen liegen
+        if (isNaN(minAge) || isNaN(maxAge) || minAge < 0 || minAge > maxAge || maxAge > 150) {
+            return alert("Invalid age range. Please enter valid numbers (e.g., 18 and 35).");
+        }
+        // --- ENDE VALIDIERUNG ---
+
         try {
+            // Sende den Request mit den validierten Daten (obwohl api.js parsed, ist die Prüfung hier wichtig)
             await ApiService.createGroup(place.properties.id, newGroup, user);
+
             setView("list");
+            // Lade die Liste neu, um den Blackscreen nach dem POST zu verhindern
             await loadGroups();
+
         } catch (err) {
             console.error("Creation failed:", err);
-            alert("Error: " + err.message);
+            // Verbesserte Fehlermeldung, falls der Backend-Fehler generisch ist
+            alert("Error creating group: " + (err.message || "Unknown error occurred."));
         }
     };
 
@@ -58,7 +87,6 @@ const GroupView = ({ place, user, onBack }) => {
 
     // 1. CHAT VIEW
     if (view === "chat" && activeGroup) {
-        // Hier wird die importierte ChatRoom Komponente verwendet
         return (
             <ChatRoom
                 locationId={place.properties.id}
@@ -122,7 +150,6 @@ const GroupView = ({ place, user, onBack }) => {
                 )}
 
                 {groups.map(group => {
-                    // Robuste Prüfung: Sicherstellen, dass members existiert und ein Array ist
                     const isMember = group.members && Array.isArray(group.members) && group.members.some(m => m.user_id === user.user_id);
                     return (
                         <div key={group.group_id} style={{border: '1px solid #e2e8f0', borderRadius: '12px', padding: '15px', marginBottom: '12px', background: 'white', boxShadow: '0 1px 2px rgba(0,0,0,0.02)'}}>
