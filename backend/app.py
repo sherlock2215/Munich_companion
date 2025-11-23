@@ -29,7 +29,7 @@ class MunichCompanion:
                 groups_list.append(info)
             groups_context_text = (
                     "There are active social groups nearby the user right now! "
-                    "If the user asks for company, events, or what to do, and one or more group fits his request you MUST ALSO RECOMMEND these groups:\n"
+                    "If the user asks for company, events, or what to do, and one or more group fits his request you should also recommend these groups:\n"
                     + "\n".join(groups_list) + "\n"
                                                "Tell the user they can join these groups in the app.\n\n"
             )

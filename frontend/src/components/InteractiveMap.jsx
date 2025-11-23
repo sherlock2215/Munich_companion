@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { MapPin, Locate, Plus, Minus } from 'lucide-react';
+import { MapPin, Locate, Plus, Minus, Users } from 'lucide-react';
 
 const TILE_SIZE = 256;
 
@@ -145,7 +145,11 @@ const InteractiveMap = ({ places, onSelectPlace, selectedId, userLocation, onLoc
                     const screenY = (worldY - centerWorldY) + screenCenterY;
 
                     const isSelected = selectedId === place.properties.id;
-                    const hasGroups = place.properties.groups && place.properties.groups.length > 0;
+                    const groupCount = place.properties.groups?.length || 0;
+                    const hasGroups = groupCount > 0;
+
+                    // Marker Farbe abhängig von Gruppenzahl
+                    const markerColor = isSelected ? '#2563eb' : (hasGroups ? '#ef4444' : '#334155');
 
                     return (
                         <div key={place.properties.id}
@@ -153,7 +157,7 @@ const InteractiveMap = ({ places, onSelectPlace, selectedId, userLocation, onLoc
                              style={{
                                  position: 'absolute',
                                  transform: `translate(${screenX}px, ${screenY}px) translate(-50%, -100%)`,
-                                 zIndex: isSelected ? 40 : 10,
+                                 zIndex: isSelected ? 40 : (hasGroups ? 20 : 10), // Gruppen-Marker leicht hervorheben
                                  pointerEvents: 'auto',
                                  cursor: 'pointer'
                              }}
@@ -162,9 +166,10 @@ const InteractiveMap = ({ places, onSelectPlace, selectedId, userLocation, onLoc
                             <div className={`relative group transition-all duration-300 ${isSelected ? 'scale-125' : 'hover:scale-110'}`}>
                                 <MapPin
                                     size={48}
-                                    color={isSelected ? '#2563eb' : '#334155'}
+                                    color={markerColor}
                                     fill="white"
                                 />
+                                {/* NEUES BADGE MIT GRUPPENANZAHL */}
                                 {hasGroups && (
                                     <div style={{
                                         position: 'absolute', top: 0, right: 0,
@@ -175,7 +180,7 @@ const InteractiveMap = ({ places, onSelectPlace, selectedId, userLocation, onLoc
                                         borderRadius: '50%', border: '2px solid white',
                                         transform: 'translate(33%, -33%)'
                                     }}>
-                                        {place.properties.groups.length}
+                                        {groupCount}
                                     </div>
                                 )}
                             </div>
@@ -192,7 +197,7 @@ const InteractiveMap = ({ places, onSelectPlace, selectedId, userLocation, onLoc
                         position: 'absolute',
                         zIndex: 30,
                         pointerEvents: 'none',
-                        transform: `translate(${lon2x(userLocation.lon) * Math.pow(2, viewport.zoom) - (lon2x(viewport.lon) * Math.pow(2, viewport.zoom)) + (mapRef.current?.clientWidth || 800) / 2}px, ${lat2y(userLocation.lat) * Math.pow(2, viewport.zoom) - (lat2y(viewport.lat) * Math.pow(2, viewport.zoom)) + (mapRef.current?.clientHeight || 600) / 2}px) translate(-50%, -50%)`
+                        transform: `translate(${lon2x(userLocation.lon) * Math.pow(2, viewport.zoom) - (lon2x(viewport.lon) * Math.pow(2, viewport.zoom)) + (mapRef.current?.clientWidth || 800) / 2}px, ${lat2y(userLocation.lat) * Math.pow(2, viewport.zoom) - (lat2y(userLocation.lat) * Math.pow(2, viewport.zoom)) + (mapRef.current?.clientHeight || 600) / 2}px) translate(-50%, -50%)`
                     }}
                 >
                     <div style={{width: '16px', height: '16px', backgroundColor: '#2563eb', borderRadius: '50%', border: '2px solid white', boxShadow: '0 0 10px rgba(0,0,0,0.3)'}}></div>

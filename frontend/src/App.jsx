@@ -7,12 +7,11 @@ import ChatRoom from './components/ChatRoom';
 import RegistrationForm from './components/RegistrationForm';
 // Icons importieren
 import {
-  Search, MapPin, Info, Palette, Beer, Landmark, Trees, Utensils, Dumbbell, Baby, Sparkles, Globe, Users, MessageCircle
+  Search, MapPin, Info, Palette, Beer, Landmark, Trees, Utensils, Dumbbell, Baby, Sparkles, Globe, Users, MessageCircle, Heart
 } from 'lucide-react';
 import './App.css';
 
 // --- MOOD OPTIONS ---
-// (Unverändert)
 const MOOD_OPTIONS = [
   { value: "🌍 Everything", label: "Everything" },
   { value: "🎉 Party / Pub Crawl", label: "Party & Nightlife" },
@@ -26,7 +25,6 @@ const MOOD_OPTIONS = [
 ];
 
 // --- ICON HELPER ---
-// (Unverändert)
 const getIconForMood = (moodValue) => {
   switch (moodValue) {
     case "🎉 Party / Pub Crawl": return <Beer size={18} />;
@@ -50,7 +48,7 @@ function App() {
   const [userLocation, setUserLocation] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // NEUER STATE FÜR DEN ANGEMELDETEN BENUTZER (Startet immer als null)
+  // Der Benutzer-State startet immer als null
   const [currentUser, setCurrentUser] = useState(null);
 
   // Navigation State
@@ -64,16 +62,7 @@ function App() {
   const [viewLat, setViewLat] = useState(48.1372);
   const [viewLng, setViewLng] = useState(11.5755);
 
-  // --- ENTFERNT: Der useEffect-Hook, der localStorage ausliest, wird gelöscht. ---
-  /*
-  useEffect(() => {
-    const storedUser = localStorage.getItem('currentUser');
-    if (storedUser) {
-      const user = JSON.parse(storedUser);
-      setCurrentUser(user);
-    }
-  }, []);
-  */
+  // WICHTIG: Kein LocalStorage-Check-useEffect mehr hier.
 
   // --- INITIAL LOAD & DATA FETCHERS (Startet nur, wenn currentUser gesetzt wird) ---
   useEffect(() => {
@@ -116,14 +105,54 @@ function App() {
       }
   };
 
+
+  const augmentPlacesWithGroups = async (features) => {
+      // Filtere alle Orte außer der Benutzerposition
+      const placeFeatures = features.filter(f => f.properties.type !== 'user');
+
+      // Erstelle ein Array von Promises für alle Gruppenabrufe
+      const groupPromises = placeFeatures.map(f =>
+          ApiService.getGroupsAtLocation(f.properties.id)
+              .then(data => {
+                  // Wenn data[0] existiert, nimm die Gruppen (Dictionary)
+                  const groupsDict = data.length > 0 && data[0].groups ? data[0].groups : {};
+                  return {
+                      placeId: f.properties.id,
+                      groups: Object.values(groupsDict) // Konvertiere Dictionary in Array
+                  };
+              })
+              .catch(e => {
+                  console.warn(`Failed to fetch groups for ${f.properties.id}:`, e);
+                  return { placeId: f.properties.id, groups: [] };
+              })
+      );
+
+      // Warte auf alle Gruppenabrufe
+      const groupResults = await Promise.all(groupPromises);
+      const groupMap = new Map(groupResults.map(res => [res.placeId, res.groups]));
+
+      // Füge die Gruppeninformationen den GeoJSON-Features hinzu
+      return features.map(f => {
+          if (f.properties.type !== 'user') {
+              f.properties.groups = groupMap.get(f.properties.id) || [];
+          }
+          return f;
+      });
+  };
+
+
   const triggerSearch = async (lat, lng, mood, radius) => {
     setLoading(true);
     try {
+        // 1. Orte abrufen
         const result = await ApiService.getNearbyPlaces(lat, lng, mood, radius);
-        const features = result.features || [];
-        setRawPlaces(features);
-        const formatted = dataFormatter(features);
-        setMapPlaces(formatted);
+        let features = result.features || [];
+
+        // 2. Orte mit Gruppeninformationen augmentieren
+        const augmentedFeatures = await augmentPlacesWithGroups(features);
+
+        setRawPlaces(augmentedFeatures);
+        setMapPlaces(augmentedFeatures); // Wir setzen die augmentierten Features direkt
     } catch (e) {
         console.error("Search failed:", e);
         setMapPlaces([]);
@@ -136,20 +165,13 @@ function App() {
     triggerSearch(viewLat, viewLng, searchMood, searchRadius);
   };
 
-  const dataFormatter = (features) => {
-    return features.map(f => {
-        if (f.properties.type !== 'user') {
-            f.properties.groups = [];
-        }
-        return f;
-    });
-  };
+  const dataFormatter = (features) => features;
 
 
   const selectedPlace = mapPlaces.find(p => p.properties.id === selectedPlaceId);
 
   // --- HANDLER FÜR REGISTRIERUNG ---
-  const handleRegisterSuccess = (user) => {
+  const handleRegistrationSuccess = (user) => {
     // Wird aufgerufen, sobald das Registrierungsformular erfolgreich war
     setCurrentUser(user);
   };
@@ -157,7 +179,7 @@ function App() {
   // --- FRÜHER RETURN FÜR REGISTRIERUNG ---
   if (!currentUser) {
     // Das Formular wird IMMER angezeigt, wenn kein aktiver Benutzer vorhanden ist.
-    return <RegistrationForm onRegisterSuccess={handleRegisterSuccess} />;
+    return <RegistrationForm onRegisterSuccess={handleRegistrationSuccess} />;
   }
 
   // --- RENDER DER HAUPT-APP (wenn currentUser vorhanden) ---
@@ -166,7 +188,7 @@ function App() {
 
       {/* SIDEBAR */}
       <div className="sidebar" style={{ color: '#1e293b', display: 'flex', flexDirection: 'column' }}>
-        {/* ... Rest der Sidebar-Logik (unverändert) */}
+
         {/* MAIN TAB SWITCHER */}
         <div style={{display: 'flex', padding: '10px', gap: '10px', background: '#f1f5f9', margin: '10px', borderRadius: '12px'}}>
             <button onClick={() => {setMainTab("search"); setSelectedGlobalGroup(null); setSelectedPlaceId(null);}}
@@ -187,7 +209,6 @@ function App() {
                         locationId={selectedGlobalGroup.location_id}
                         groupId={selectedGlobalGroup.group_id}
                         title={selectedGlobalGroup.title}
-                        // Übergabe des echten Benutzers
                         user={currentUser}
                         onBack={() => setSelectedGlobalGroup(null)}
                     />
@@ -210,13 +231,12 @@ function App() {
             </div>
         )}
 
-        {/* --- CONTENT: SEARCH TAB --- */}
+        {/* --- CONTENT: SEARCH TAB (Mit Gruppenanzeige) --- */}
         {mainTab === "search" && (
             <>
                 {selectedPlace ? (
                     <GroupView
                         place={selectedPlace}
-                        // Übergabe des echten Benutzers
                         user={currentUser}
                         onBack={() => setSelectedPlaceId(null)}
                     />
@@ -248,11 +268,26 @@ function App() {
 
                         {mapPlaces.map((place) => {
                             if (place.properties.type === 'user') return null;
+                            const groupCount = place.properties.groups?.length || 0;
+                            const hasGroups = groupCount > 0;
                             return (
                             <div key={place.properties.id} className="place-card" onClick={() => setSelectedPlaceId(place.properties.id)} style={{background: 'white', color: '#1e293b'}}>
                                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                                <div style={{ background: '#e0f2fe', padding: '8px', borderRadius: '8px', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{getIconForMood(searchMood)}</div>
-                                <div><h4 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '600', color: '#0f172a' }}>{place.properties.name}</h4><p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>{place.properties.address}</p></div>
+                                <div style={{ background: hasGroups ? '#fef2f2' : '#e0f2fe', padding: '8px', borderRadius: '8px', color: hasGroups ? '#ef4444' : '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    {getIconForMood(searchMood)}
+                                </div>
+                                <div>
+                                    <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '600', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        {place.properties.name}
+                                        {/* Badge in der Liste anzeigen */}
+                                        {hasGroups && (
+                                            <span style={{fontSize: '10px', background: '#ef4444', color: 'white', padding: '2px 6px', borderRadius: '999px', fontWeight: 'bold'}}>
+                                                {groupCount} Group{groupCount > 1 ? 's' : ''}
+                                            </span>
+                                        )}
+                                    </h4>
+                                    <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>{place.properties.address}</p>
+                                </div>
                                 </div>
                             </div>
                             );
