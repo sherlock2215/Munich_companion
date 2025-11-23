@@ -1,31 +1,30 @@
 import { useState, useEffect } from 'react';
-import { ApiService } from './services/api';
-import InteractiveMap from './components/InteractiveMap';
-import GroupView from './components/GroupView';
-import ChatbotWidget from './components/ChatbotWidget';
-// Icons importieren
+import { ApiService } from '../services/api';
+import InteractiveMap from '../components/InteractiveMap';
+import GroupView from '../components/GroupView';
+import ChatRoom from '../components/ChatRoom';
+import ChatbotWidget from '../components/ChatbotWidget';
 import {
-  Search, MapPin, Info, Palette, Beer, Landmark, Trees, Utensils, Dumbbell, Baby, Sparkles, Globe, Users
+  Search, MapPin, Info, Palette, Beer, Landmark, Trees, Utensils, Dumbbell, Baby, Sparkles, Globe, Users, MessageCircle
 } from 'lucide-react';
-import './App.css';
+import '../App.css';
 
-// --- MOCK USER ---
+// --- USER ---
 const CURRENT_USER = { user_id: 999, name: "Demo User", age: 24, gender: "divers" };
 
-// --- MOOD OPTIONS (Backend Keys must remain German/Emoji) ---
+// --- CONFIG ---
 const MOOD_OPTIONS = [
-  { value: "🌍 Everything", label: "Everything" },
+  { value: "🌍 Everything", label: "Alles anzeigen" },
   { value: "🎉 Party / Pub Crawl", label: "Party & Nightlife" },
-  { value: "🎨 Art & Culture", label: "Art & Culture" },
-  { value: "🏛️ History", label: "History & Museums" },
-  { value: "🌿 Nature / Relax", label: "Nature & Parks" },
-  { value: "🍽️ Food Tour", label: "Food & Dining" },
-  { value: "⚽ Sports & Activities", label: "Sports & Action" },
-  { value: "👨‍👨‍👧 Family Friendly", label: "Family Friendly" },
-  { value: "💫 Hidden Gems", label: "Hidden Gems" }
+  { value: "🎨 Art & Culture", label: "Kunst & Kultur" },
+  { value: "🏛️ History", label: "Geschichte & Museen" },
+  { value: "🌿 Nature / Relax", label: "Natur & Parks" },
+  { value: "🍽️ Food Tour", label: "Essen & Gastro" },
+  { value: "⚽ Sports & Activities", label: "Sport & Action" },
+  { value: "👨‍👨‍👧 Family Friendly", label: "Familie & Kinder" },
+  { value: "💫 Hidden Gems", label: "Geheimtipps" }
 ];
 
-// --- ICON HELPER ---
 const getIconForMood = (moodValue) => {
   switch (moodValue) {
     case "🎉 Party / Pub Crawl": return <Beer size={18} />;
@@ -50,9 +49,9 @@ function App() {
   const [loading, setLoading] = useState(false);
 
   // Navigation State
-  const [mainTab, setMainTab] = useState("search");
-  const [myGroups, setMyGroups] = useState([]);
-  const [selectedGlobalGroup, setSelectedGlobalGroup] = useState(null);
+  const [mainTab, setMainTab] = useState("search"); // "search" | "my_groups"
+  const [myGroups, setMyGroups] = useState([]); // List of joined groups
+  const [selectedGlobalGroup, setSelectedGlobalGroup] = useState(null); // For MyGroups Chat
 
   // Filter State
   const [searchMood, setSearchMood] = useState("🌍 Everything");
@@ -60,7 +59,7 @@ function App() {
   const [viewLat, setViewLat] = useState(48.1372);
   const [viewLng, setViewLng] = useState(11.5755);
 
-  // --- INITIAL LOAD & DATA FETCHERS ---
+  // --- INITIAL LOAD ---
   useEffect(() => {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
@@ -78,6 +77,7 @@ function App() {
     }
   }, []);
 
+  // Lade "Meine Gruppen" wenn der Tab gewechselt wird
   useEffect(() => {
       if (mainTab === "my_groups") {
           loadMyGroups();
@@ -96,6 +96,7 @@ function App() {
       }
   };
 
+  // --- API SEARCH ---
   const triggerSearch = async (lat, lng, mood, radius) => {
     setLoading(true);
     setRawPlaces([]);
@@ -105,7 +106,7 @@ function App() {
       else if (Array.isArray(data)) setRawPlaces(data);
       else setRawPlaces([]);
     } catch (error) {
-      console.error("Error loading places:", error);
+      console.error("Fehler beim Laden:", error);
     } finally {
       setLoading(false);
     }
@@ -127,7 +128,7 @@ function App() {
       return {
         type: "Feature",
         geometry: { type: "Point", coordinates: [item.lng || 11.5, item.lat || 48.1] },
-        properties: { id: item.place_id || index, name: item.name || "Unknown Place", address: item.vicinity || "No Address", mood: searchMood, ...item }
+        properties: { id: item.place_id || index, name: item.name || "Unbekannter Ort", address: item.vicinity || "Keine Adresse", mood: searchMood, ...item }
       };
     });
     setMapPlaces(formatted);
@@ -138,7 +139,6 @@ function App() {
   // --- RENDER ---
   return (
     <div className="app-layout">
-
       {/* SIDEBAR */}
       <div className="sidebar" style={{ color: '#1e293b', display: 'flex', flexDirection: 'column' }}>
 
@@ -146,11 +146,11 @@ function App() {
         <div style={{display: 'flex', padding: '10px', gap: '10px', background: '#f1f5f9', margin: '10px', borderRadius: '12px'}}>
             <button onClick={() => {setMainTab("search"); setSelectedGlobalGroup(null); setSelectedPlaceId(null);}}
                 style={{flex: 1, padding: '8px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: '600', background: mainTab === 'search' ? 'white' : 'transparent', color: mainTab === 'search' ? '#2563eb' : '#64748b', boxShadow: mainTab === 'search' ? '0 2px 5px rgba(0,0,0,0.05)' : 'none'}}>
-                <Search size={16} style={{verticalAlign: 'middle', marginRight: '5px'}}/> Search
+                <Search size={16} style={{verticalAlign: 'middle', marginRight: '5px'}}/> Suche
             </button>
             <button onClick={() => setMainTab("my_groups")}
                 style={{flex: 1, padding: '8px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: '600', background: mainTab === 'my_groups' ? 'white' : 'transparent', color: mainTab === 'my_groups' ? '#2563eb' : '#64748b', boxShadow: mainTab === 'my_groups' ? '0 2px 5px rgba(0,0,0,0.05)' : 'none'}}>
-                <Users size={16} style={{verticalAlign: 'middle', marginRight: '5px'}}/> My Groups
+                <Users size={16} style={{verticalAlign: 'middle', marginRight: '5px'}}/> Meine Gruppen
             </button>
         </div>
 
@@ -158,6 +158,7 @@ function App() {
         {mainTab === "my_groups" && (
             <div style={{flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden'}}>
                 {selectedGlobalGroup ? (
+                    // CHAT VIEW
                     <ChatRoom
                         locationId={selectedGlobalGroup.location_id}
                         groupId={selectedGlobalGroup.group_id}
@@ -166,15 +167,16 @@ function App() {
                         onBack={() => setSelectedGlobalGroup(null)}
                     />
                 ) : (
-                    <div className="sidebar-content" style={{paddingTop: '0'}}>
-                         <h2 style={{margin: '10px 0 15px 0', fontSize: '20px', color: '#0f172a', padding: '0 15px'}}>My Groups</h2>
-                         {myGroups.length === 0 && !loading && <div style={{textAlign: 'center', padding: '30px', color: '#94a3b8'}}>You haven't joined any groups yet.</div>}
+                    // LIST VIEW
+                    <div className="sidebar-content">
+                         <h2 style={{margin: '10px 0 15px 0', fontSize: '20px', color: '#0f172a', padding: '0 15px'}}>Deine Gruppen</h2>
+                         {myGroups.length === 0 && !loading && <div style={{textAlign: 'center', padding: '30px', color: '#94a3b8'}}>Du bist noch in keinen Gruppen.</div>}
                          {myGroups.map(group => (
                              <div key={group.group_id} onClick={() => setSelectedGlobalGroup(group)}
                                 style={{margin: '0 15px 10px 15px', padding: '15px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.02)'}}>
                                 <div>
                                     <h4 style={{margin: 0, color: '#0f172a'}}>{group.title}</h4>
-                                    <small style={{color: '#64748b'}}>Click to chat</small>
+                                    <small style={{color: '#64748b'}}>Klicken zum Chatten</small>
                                 </div>
                                 <MessageCircle size={20} color="#2563eb"/>
                              </div>
@@ -188,7 +190,6 @@ function App() {
         {mainTab === "search" && (
             <>
                 {selectedPlace ? (
-                    // GroupView is already translated
                     <GroupView place={selectedPlace} user={CURRENT_USER} onBack={() => setSelectedPlaceId(null)} />
                 ) : (
                     <>
@@ -196,7 +197,7 @@ function App() {
                         <h2 style={{ margin: '0 0 15px 0', color: '#0f172a' }}>Munich Companion</h2>
                         <div className="filter-controls">
                             <div className="control-group">
-                            <label style={{ color: '#64748b' }}>Category</label>
+                            <label style={{ color: '#64748b' }}>Kategorie</label>
                             <div style={{ position: 'relative' }}>
                                 <select className="mood-select" value={searchMood} onChange={(e) => setSearchMood(e.target.value)} style={{ paddingLeft: '35px', color: '#0f172a', backgroundColor: 'white', border: '1px solid #cbd5e1' }}>
                                 {MOOD_OPTIONS.map(m => (<option key={m.value} value={m.value} style={{color: 'black'}}>{m.label}</option>))}
@@ -208,14 +209,12 @@ function App() {
                             <label style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>Radius <span className="radius-value" style={{color: '#2563eb'}}>{(searchRadius / 1000).toFixed(1)} km</span></label>
                             <input type="range" className="radius-slider" min="500" max="20000" step="500" value={searchRadius} onChange={(e) => setSearchRadius(Number(e.target.value))} style={{cursor: 'pointer'}} />
                             </div>
-                            <button className="btn-primary" onClick={handleSearchClick} disabled={loading} style={{ marginTop: '10px' }}>{loading ? 'Loading...' : <><Search size={18} /> Find Places</>}</button>
+                            <button className="btn-primary" onClick={handleSearchClick} disabled={loading} style={{ marginTop: '10px' }}>{loading ? 'Lade...' : <><Search size={18} /> Orte finden</>}</button>
                         </div>
                         </div>
 
                         <div className="sidebar-content">
-                        {loading && <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}><div className="spinner" style={{ margin: '0 auto 10px auto', borderColor: '#e2e8f0', borderTopColor: '#2563eb' }}></div>Searching...</div>}
-                        {!loading && mapPlaces.length === 0 && <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}><Info size={40} style={{ marginBottom: '10px', opacity: 0.5 }} /><p>No places found.</p><small>Try a larger radius.</small></div>}
-
+                        {!loading && mapPlaces.length === 0 && <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}><Info size={40} style={{ marginBottom: '10px', opacity: 0.5 }} /><p>Keine Orte gefunden.</p></div>}
                         {mapPlaces.map((place) => {
                             if (place.properties.type === 'user') return null;
                             return (
@@ -237,17 +236,10 @@ function App() {
       {/* MAP */}
       <div style={{ width: '100%', height: '100%' }}>
         <InteractiveMap
-          places={mapPlaces}
-          onSelectPlace={(p) => {if(p.properties.type!=='user') {setSelectedPlaceId(p.properties.id); setMainTab("search");}}}
-          selectedId={selectedPlaceId}
-          userLocation={userLocation}
-          onLocateUser={() => {
-            if (userLocation) {
-              setViewLat(userLocation.lat);
-              setViewLng(userLocation.lon);
-              triggerSearch(userLocation.lat, userLocation.lon, searchMood, searchRadius);
-            }
-          }}
+            places={mapPlaces}
+            onSelectPlace={(p) => {if(p.properties.type!=='user') {setSelectedPlaceId(p.properties.id); setMainTab("search");}}}
+            selectedId={selectedPlaceId} userLocation={userLocation}
+            onLocateUser={() => {if(userLocation) triggerSearch(userLocation.lat, userLocation.lon, searchMood, searchRadius);}}
         />
       </div>
 
