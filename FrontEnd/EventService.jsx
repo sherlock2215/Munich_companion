@@ -1,8 +1,50 @@
+// EventService.jsx
+import { apiService } from './apiService';
+
 const EventService = {
-    fetchPlaces: async () => {
+    fetchPlaces: async (mood = "🎨 Art & Culture", lat, lng, radius = 10000) => {
+        try {
+            if (!lat || !lng) {
+                throw new Error('Location required to fetch places');
+            }
+
+            const result = await apiService.getNearbyPlaces(mood, lat, lng, radius);
+
+            // Transform the GeoJSON response to match the expected format
+            if (result.features) {
+                return result.features.map(feature => ({
+                    type: "Feature",
+                    geometry: feature.geometry,
+                    properties: {
+                        id: feature.properties.id,
+                        name: feature.properties.name,
+                        mood: mood,
+                        address: feature.properties.address,
+                        rating: feature.properties.rating,
+                        price_level: feature.properties.price_level,
+                        types: feature.properties.types || [],
+                        total_ratings: feature.properties.total_ratings,
+                        open_now: feature.properties.open_now,
+                        "marker-color": feature.properties["marker-color"] || "#4ECDC4",
+                        groups: feature.properties.groups || []
+                    }
+                }));
+            }
+
+            return [];
+        } catch (error) {
+            console.error('Error fetching places:', error);
+            // Fallback to mock data if API fails
+            return await EventService.getMockPlaces();
+        }
+    },
+
+    // Keep mock data as fallback
+    getMockPlaces: async () => {
         return new Promise((resolve) => {
             setTimeout(() => {
                 resolve([
+                    // Your existing mock data here as fallback
                     {
                         type: "Feature",
                         geometry: { type: "Point", coordinates: [11.575858, 48.139972] },
@@ -17,86 +59,6 @@ const EventService = {
                             total_ratings: 3555,
                             open_now: true,
                             "marker-color": "#4ECDC4",
-                            groups: [
-                                {
-                                    group_id: 101,
-                                    title: "Deutsches Museum Tour",
-                                    description: "Wir gehen die größten Museen durch",
-                                    time: "14:00",
-                                    activities: [
-                                        { time: "14:00", title: "Treffpunkt", desc: "Vor dem Haupteingang" },
-                                        { time: "14:15", title: "Rundgang Start", desc: "Abteilung Luftfahrt" },
-                                        { time: "16:00", title: "Kaffeepause", desc: "Im Museumscafé" }
-                                    ],
-                                    members: [
-                                        { user_id: 1, name: "Anna", age: 25, role: "Host" },
-                                        { user_id: 2, name: "Bernd", age: 28, role: "Member" },
-                                        { user_id: 99, name: "Charlie", age: 24, role: "Member" }
-                                    ]
-                                },
-                                {
-                                    group_id: 102,
-                                    title: "Kunst & Kaffee",
-                                    description: "Erst Ausstellung, dann Cappuccino",
-                                    time: "16:30",
-                                    activities: [
-                                        { time: "16:30", title: "Einlass", desc: "Gruppenticket holen" },
-                                        { time: "18:00", title: "Diskussion", desc: "Über die Exponate" }
-                                    ],
-                                    members: [
-                                        { user_id: 3, name: "Clara", age: 22, role: "Host" },
-                                        { user_id: 4, name: "David", age: 31, role: "Member" },
-                                        { user_id: 5, name: "Elena", age: 27, role: "Member" }
-                                    ]
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        type: "Feature",
-                        geometry: { type: "Point", coordinates: [11.5788164, 48.1493738] },
-                        properties: {
-                            id: "2",
-                            name: "AMUSEUM of Contemporary Art",
-                            mood: "🎨 Art & Culture",
-                            address: "Schellingstraße 3, München",
-                            rating: 4.4,
-                            price_level: 0,
-                            types: ["museum", "street-art"],
-                            total_ratings: 60,
-                            open_now: false,
-                            "marker-color": "#FF6B6B",
-                            groups: [
-                                {
-                                    group_id: 103,
-                                    title: "Street Art Walk",
-                                    description: "Foto-Tour durch das Museum",
-                                    time: "10:00",
-                                    activities: [
-                                        { time: "10:00", title: "Start", desc: "Eingangshalle" },
-                                        { time: "11:30", title: "Workshop", desc: "Graffiti Basics" }
-                                    ],
-                                    members: [
-                                        { user_id: 6, name: "Fabian", age: 24, role: "Host" }
-                                    ]
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        type: "Feature",
-                        geometry: { type: "Point", coordinates: [11.5699981, 48.1366127] },
-                        properties: {
-                            id: "3",
-                            name: "MUCA - Museum of Urban Art",
-                            mood: "🎨 Art & Culture",
-                            address: "Hotterstraße 12, München",
-                            rating: 4.3,
-                            price_level: 0,
-                            types: ["museum"],
-                            total_ratings: 1126,
-                            open_now: true,
-                            "marker-color": "#FFE66D",
                             groups: []
                         }
                     }

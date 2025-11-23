@@ -1,3 +1,5 @@
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { MapPin, Locate, Plus, Minus } from 'lucide-react';
 
 const TILE_SIZE = 256;
 
@@ -10,9 +12,6 @@ const lat2y = (lat) => {
 const lon2x = (lon) => {
     return (lon + 180) / 360 * TILE_SIZE;
 };
-
-
-
 
 const InteractiveMap = ({ places, onSelectPlace, selectedId, userLocation, onLocateUser }) => {
     const [viewport, setViewport] = useState({ lat: 48.1400, lon: 11.5750, zoom: 14 });
