@@ -12,14 +12,20 @@ class ChatMessageModel(BaseModel):
     content: str
     timestamp: datetime = Field(default_factory=datetime.now)
 
+class UserGroupInfo(BaseModel):
+    location_id: str
+    group_id: uuid.UUID
+    title: str
+
 
 class UserModel(BaseModel):
     user_id: int
     name: str
     age: int
     gender: str
-    interests: List[str]
-    bio: Optional[str]
+    interests: List[str] = []
+    bio: Optional[str] = None
+    joined_groups: List[UserGroupInfo] = Field(default_factory=list)
 
 class GroupModel(BaseModel):
     group_id: uuid.UUID
