@@ -17,9 +17,23 @@ load_dotenv()
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 gmaps_client = googlemaps.Client(key=GOOGLE_API_KEY)
 
+users_db: Dict[int, UserModel] = {}
 locations_db: Dict[str, LocationModel] = {}
 DB_LOCK = threading.Lock()
 
+
+def register_users(user: UserModel):
+    with DB_LOCK:
+        if user.user_id in users_db:
+            print(f"User ID {user.user_id} already exists!")
+            return False
+        users_db[user.user_id] = user
+        print(f"User registered: {user.name} (ID: {user.user_id}")
+        return True
+
+def get_user(user_id: int):
+    with DB_LOCK:
+        return users_db.get(user_id)
 
 def run_deleter_in_background():
     deletion_thread = threading.Thread(target=timed_deleting)
@@ -67,8 +81,29 @@ def delete_group(location_id:str, group_id:uuid.UUID):
                 del location.groups[group_id]
                 return True
 
+
+def add_group_to_user(user_id: int, location_id: str, group: GroupModel):
+    if user_id in users_db:
+        user = users_db[user_id]
+
+        for existing in user.joined_groups:
+            if existing.group_id == group.group_id:
+                return  #avoid duplicates
+
+        info = UserGroupInfo(
+            location_id=location_id,
+            group_id=group.group_id,
+            title=group.title
+        )
+        user.joined_groups.append(info)
+        print(f"Updated User {user.name}: Added group '{group.title}'")
+
+
 def join_group(location_id: str, group_id: uuid.UUID, user: UserModel):
     with DB_LOCK:
+        if user.user_id not in users_db:
+            users_db[user.user_id] = user
+
         if location_id in locations_db:
             location = locations_db[location_id]
             groups = location.groups
@@ -81,6 +116,7 @@ def join_group(location_id: str, group_id: uuid.UUID, user: UserModel):
                         return False
                     else:
                         group.members.append(user)
+                        add_group_to_user(user.user_id, location_id, group)
                         return True
                 else:
                     print("You dont fit the age restrictions of this Group")
@@ -93,7 +129,18 @@ def join_group(location_id: str, group_id: uuid.UUID, user: UserModel):
             return False
 
 
+def get_user_groups(user_id: int):
+    with DB_LOCK:
+        user = users_db.get(user_id)
+        if user:
+            return [g.model_dump(mode='json') for g in user.joined_groups]
+        return []
+
+
 def create_group(location_id: str, title: str, description: str, age_range: Tuple[int,int], gdate: date, host: UserModel):
+    with DB_LOCK:
+        if host.user_id not in users_db:
+            users_db[host.user_id] = host
     group_id = uuid.uuid4()
     group = GroupModel(
         group_id = group_id,
@@ -111,7 +158,6 @@ def create_group(location_id: str, title: str, description: str, age_range: Tupl
                 print("Something went wrong, pls try again")
                 return None
             location.groups[group_id] = group
-            return group
         else:
             lat, lng = fetch_coordinates_from_google(location_id)
             groups: Dict[uuid.UUID, GroupModel] = {group_id: group}
@@ -122,7 +168,9 @@ def create_group(location_id: str, title: str, description: str, age_range: Tupl
                 groups = groups
             )
             locations_db[location_id] = location
-            return group
+        add_group_to_user(host.user_id, location_id, group)
+        return group
+
 
 def get_groups_by_location(locations : List[str]):
     json_list = []

@@ -70,6 +70,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="MunichCompanion API", lifespan=lifespan)
 
+
 # In main.py, update origins if needed
 origins = [
     "http://localhost:5173",  # Vite default
@@ -89,6 +90,32 @@ app.add_middleware(
 
 
 mood_mapper = DirectMoodMapper()
+
+
+
+@app.post("/users/register")
+def register_new_user(user: UserModel):
+    success = db.register_users(user)
+    if not success:
+        raise HTTPException(
+            status_code=400,
+            detail="User ID already exists. Please try again."
+        )
+    return {"status": "success", "message": f"Welcome {user.name}! You are registered.", "user": user}
+
+@app.get("/users/all")
+def get_all_users():
+    return list(db.users_db.values())
+
+@app.get("/users/{user_id}/groups")
+def get_groups_for_user(user_id: int):
+    try:
+        user_groups = db.get_user_groups(user_id)
+        return user_groups
+    except Exception as e:
+        print(f"Error fetching user groups: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 
 @app.get("/api/map/nearby")
@@ -173,7 +200,7 @@ def chatbot_user_interaction(user_input: str, lat: float, lng: float):
 
 
 @app.get("/api/chatbot/automatic")
-def chatbot_automatet_interaction(lat: float, lng: float):
+def chatbot_automated_interaction(lat: float, lng: float):
     try:
         location_data = {"lat": lat, "lng": lng}
         response = chatbot.ask("Can you give me any fun facts about my nearby location?", location=location_data)
