@@ -8,6 +8,7 @@ from models import *
 from mood_service import DirectMoodMapper
 import GroupDataManager as db
 
+from fastapi.middleware.cors import CORSMiddleware
 
 class CreateGroupRequest(BaseModel):
     location_id: str
@@ -69,7 +70,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="MunichCompanion API", lifespan=lifespan)
 
-
 # In main.py, update origins if needed
 origins = [
     "http://localhost:5173",  # Vite default
@@ -91,21 +91,22 @@ app.add_middleware(
 mood_mapper = DirectMoodMapper()
 
 
-@app.get("/map/nearby")
+@app.get("/api/map/nearby")
 def get_places_nearby(
         lat: float,
         lng: float,
-        mood: str = "🎨 Art & Culture",
+        mood: str = "🌍 Everything",
         radius: int = 10000
 ):
     try:
         result = mood_mapper.find_places(mood,lat, lng, radius)
+        print(result)
         return result
     except Exception as e:
         print(f"Error in mood_mapper: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/locations/{location_id}/groups")
+@app.get("/api/locations/{location_id}/groups")
 def get_groups_at_location(location_id: str):
     try:
         json_strings_list = db.get_groups_by_location([location_id])
@@ -121,7 +122,7 @@ def get_groups_at_location(location_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/groups/create")
+@app.post("/api/groups/create")
 def create_new_group(req: CreateGroupRequest):
     try:
         result = db.create_group(location_id=req.location_id, title= req.title, description= req.description, age_range=req.age_range, gdate=req.date, host= req.host)
@@ -133,7 +134,7 @@ def create_new_group(req: CreateGroupRequest):
         print(f"Error creating group: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/groups/join")
+@app.post("/api/groups/join")
 def join_existing_group(req: JoinGroupRequest):
     success = db.join_group(location_id=req.location_id, group_id=req.group_id, user=req.user)
     if not success:
@@ -141,7 +142,7 @@ def join_existing_group(req: JoinGroupRequest):
     else:
         return {"status": "success", "message": "Joined group successfully"}
 
-@app.post("/chat/send")
+@app.post("/api/chat/send")
 async def send_chat_message(req: SendMessageRequest):
     created_message = db.send_message(location_id=req.location_id, group_id=req.group_id, user=req.user, content=req.content)
     if created_message is None:
@@ -151,13 +152,13 @@ async def send_chat_message(req: SendMessageRequest):
         await connection_manager.broadcast(message_dict, req.group_id)
         return {"status": "success", "message": "Message sent"}
 
-@app.get("/chat/history")
+@app.get("/api/chat/history")
 def get_chat_history(location_id: str, group_id: uuid.UUID, user_id: int):
     history = db.get_chat_history(location_id, group_id, user_id)
     return history
 
 
-@app.get("/chatbot/user")
+@app.get("/api/chatbot/user")
 def chatbot_user_interaction(user_input: str, lat: float, lng: float):
     try:
         location_data = {"lat": lat, "lng": lng}
@@ -171,7 +172,7 @@ def chatbot_user_interaction(user_input: str, lat: float, lng: float):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/chatbot/automatic")
+@app.get("/api/chatbot/automatic")
 def chatbot_automatet_interaction(lat: float, lng: float):
     try:
         location_data = {"lat": lat, "lng": lng}
@@ -188,7 +189,7 @@ def chatbot_automatet_interaction(lat: float, lng: float):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.websocket("/ws/{group_id}")
+@app.websocket("/api/ws/{group_id}")
 async def websocket_endpoint(websocket: WebSocket, group_id: uuid.UUID):
     await connection_manager.connect(websocket, group_id)
     try:
