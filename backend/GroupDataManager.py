@@ -133,7 +133,7 @@ def get_user_groups(user_id: int):
     with DB_LOCK:
         user = users_db.get(user_id)
         if user:
-            return [g.model_dump(mode='json') for g in user.joined_groups]
+            return [g.model_dump() for g in user.joined_groups]
         return []
 
 
