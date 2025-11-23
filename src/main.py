@@ -70,10 +70,13 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="MunichCompanion API", lifespan=lifespan)
 
 
+# In main.py, update origins if needed
 origins = [
-    "http://localhost:5173",  # Standard Vite Port
-    "http://localhost:3000",
-    "*"
+    "http://localhost:5173",  # Vite default
+    "http://localhost:3000",  # Create React App default
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
+    "*"  # For development only
 ]
 
 app.add_middleware(
