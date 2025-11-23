@@ -1,9 +1,16 @@
 // frontend/src/services/api.js
 
-const BASE_URL = '/api'; // Backend erwartet jetzt /api prefix
-
+/**
+ * Universal request function.
+ * Checks if the endpoint starts with '/users' (no /api prefix) or requires '/api'.
+ */
 async function request(endpoint, options = {}) {
-    const url = BASE_URL + endpoint;
+    // If the endpoint starts with /users, we do NOT prepend /api (e.g., /users/register)
+    const isUserEndpoint = endpoint.startsWith('/users');
+
+    // Determine the final URL prefix
+    const url = (isUserEndpoint ? '' : '/api') + endpoint;
+
     const response = await fetch(url, {
         headers: { 'Content-Type': 'application/json' },
         ...options,
@@ -11,68 +18,61 @@ async function request(endpoint, options = {}) {
 
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Fehler: ${response.statusText}`);
+        throw new Error(errorData.detail || `Error ${response.status}: ${response.statusText}`);
     }
     return response.json();
 }
 
 export const ApiService = {
-    // Map
+    // --- MAP & GROUPS ---
     getNearbyPlaces: (lat, lng, mood, radius) => {
         const params = new URLSearchParams({ lat, lng, mood, radius });
         return request(`/map/nearby?${params.toString()}`);
     },
-
-    // Gruppen für einen Ort laden
     getGroupsAtLocation: (locationId) => {
         return request(`/locations/${locationId}/groups`);
     },
-
-    // Gruppe erstellen
-    // Matches CreateGroupRequest in main.py
     createGroup: (locationId, groupData, hostUser) => {
         const payload = {
             location_id: locationId,
             title: groupData.title,
             description: groupData.description,
-            age_range: [parseInt(groupData.minAge), parseInt(groupData.maxAge)], // Tuple als Array
-            date: groupData.date, // String "YYYY-MM-DD"
-            host: hostUser // Muss komplettes UserModel sein
+            age_range: [parseInt(groupData.minAge), parseInt(groupData.maxAge)],
+            date: groupData.date,
+            host: hostUser
         };
-        return request('/groups/create', {
-            method: 'POST',
-            body: JSON.stringify(payload)
-        });
+        return request('/groups/create', { method: 'POST', body: JSON.stringify(payload) });
     },
-
-    // Gruppe beitreten
     joinGroup: (locationId, groupId, user) => {
         return request('/groups/join', {
             method: 'POST',
-            body: JSON.stringify({
-                location_id: locationId,
-                group_id: groupId,
-                user: user
-            })
+            body: JSON.stringify({ location_id: locationId, group_id: groupId, user: user })
         });
     },
 
-    // Chatverlauf laden
+    // --- USER (Global - No /api prefix) ---
+    getUserGroups: (userId) => {
+        // Calls /users/{id}/groups
+        return request(`/users/${userId}/groups`);
+    },
+    registerUser: (userModel) => {
+        // Calls /users/register
+        return request('/users/register', { method: 'POST', body: JSON.stringify(userModel) });
+    },
+
+    // --- CHAT & CHATBOT ---
     getChatHistory: (locationId, groupId, userId) => {
         const params = new URLSearchParams({ location_id: locationId, group_id: groupId, user_id: userId });
         return request(`/chat/history?${params.toString()}`);
     },
-
-    // Nachricht senden (REST Fallback)
     sendChatMessage: (locationId, groupId, user, content) => {
         return request('/chat/send', {
             method: 'POST',
-            body: JSON.stringify({
-                location_id: locationId,
-                group_id: groupId,
-                user: user,
-                content: content
-            })
+            body: JSON.stringify({ location_id: locationId, group_id: groupId, user: user, content: content })
         });
+    },
+    askChatbot: (userInput, lat, lng) => {
+        const params = new URLSearchParams({ user_input: userInput, lat, lng });
+        return request(`/chatbot/user?${params.toString()}`);
     }
 };
