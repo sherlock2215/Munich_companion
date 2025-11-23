@@ -4,7 +4,7 @@ import InteractiveMap from './components/InteractiveMap';
 import GroupView from './components/GroupView';
 import ChatbotWidget from './components/ChatbotWidget';
 import ChatRoom from './components/ChatRoom';
-import RegistrationForm from './components/RegistrationForm'; // NEUER IMPORT
+import RegistrationForm from './components/RegistrationForm';
 // Icons importieren
 import {
   Search, MapPin, Info, Palette, Beer, Landmark, Trees, Utensils, Dumbbell, Baby, Sparkles, Globe, Users, MessageCircle
@@ -50,8 +50,8 @@ function App() {
   const [userLocation, setUserLocation] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // NEUER STATE FÜR DEN ANGEMELDETEN BENUTZER
-  const [currentUser, setCurrentUser] = useState(null); // Ersetzt CURRENT_USER Mock
+  // NEUER STATE FÜR DEN ANGEMELDETEN BENUTZER (Startet immer als null)
+  const [currentUser, setCurrentUser] = useState(null);
 
   // Navigation State
   const [mainTab, setMainTab] = useState("search");
@@ -64,7 +64,8 @@ function App() {
   const [viewLat, setViewLat] = useState(48.1372);
   const [viewLng, setViewLng] = useState(11.5755);
 
-  // --- NEUER EFFEKT: AUTHENTIFIZIERUNG PRÜFEN ---
+  // --- ENTFERNT: Der useEffect-Hook, der localStorage ausliest, wird gelöscht. ---
+  /*
   useEffect(() => {
     const storedUser = localStorage.getItem('currentUser');
     if (storedUser) {
@@ -72,13 +73,11 @@ function App() {
       setCurrentUser(user);
     }
   }, []);
+  */
 
-  // --- INITIAL LOAD & DATA FETCHERS (Nur ausführen, wenn der Benutzer angemeldet ist) ---
+  // --- INITIAL LOAD & DATA FETCHERS (Startet nur, wenn currentUser gesetzt wird) ---
   useEffect(() => {
-    if (!currentUser) return; // WICHTIG: Stoppt die Ausführung, wenn kein Benutzer angemeldet ist
-
-    // 1. MOCK USER REGISTRIERUNG (wird nun durch die Registrierungskomponente übersprungen, aber wir lassen den Logik-Block für die Erstsuche)
-    // Entferne den alten ApiService.registerUser Aufruf
+    if (!currentUser) return;
 
     // 2. GEOLOCATION UND ERSTE SUCHE
     if ("geolocation" in navigator) {
@@ -95,14 +94,14 @@ function App() {
     } else {
       triggerSearch(viewLat, viewLng, searchMood, searchRadius);
     }
-  }, [currentUser]); // Abhängigkeit von currentUser hinzugefügt
+  }, [currentUser]);
 
   useEffect(() => {
-      if (!currentUser) return; // Prüfen
+      if (!currentUser) return;
       if (mainTab === "my_groups") {
           loadMyGroups();
       }
-  }, [mainTab, currentUser]); // Abhängigkeit von currentUser hinzugefügt
+  }, [mainTab, currentUser]);
 
   const loadMyGroups = async () => {
       setLoading(true);
@@ -121,12 +120,9 @@ function App() {
     setLoading(true);
     try {
         const result = await ApiService.getNearbyPlaces(lat, lng, mood, radius);
-        // Da GeoJSON vom Backend kommt, können wir es direkt verwenden,
-        // aber wir brauchen noch einen kleinen Formatierungsschritt, um die
-        // Gruppeninformationen für die Karte zu aggregieren (falls vorhanden).
         const features = result.features || [];
         setRawPlaces(features);
-        const formatted = dataFormatter(features); // Stelle sicher, dass dataFormatter auch implementiert ist, falls es fehlt
+        const formatted = dataFormatter(features);
         setMapPlaces(formatted);
     } catch (e) {
         console.error("Search failed:", e);
@@ -134,46 +130,33 @@ function App() {
     } finally {
         setLoading(false);
     }
-};
+  };
 
-const handleSearchClick = () => {
+  const handleSearchClick = () => {
     triggerSearch(viewLat, viewLng, searchMood, searchRadius);
-};
+  };
 
-// Hilfsfunktion zur Formatierung der Daten (Wird von triggerSearch verwendet)
-// Diese Funktion muss ebenfalls implementiert sein.
-const dataFormatter = (features) => {
-    // Hier wird simuliert, dass Gruppeninformationen an die GeoJSON-Features angehängt werden,
-    // indem wir die Gruppen am Standort abrufen.
-    // Da dies ein Demo-Setup ist, vereinfachen wir es:
+  const dataFormatter = (features) => {
     return features.map(f => {
-        // Mock Group Data, da die Places API keine Gruppen liefert
         if (f.properties.type !== 'user') {
-            // Dies ist der Teil, der im echten App-Code fehlt,
-            // da die Nearby Groups API nicht direkt mit der Places API verbunden ist.
-            // Für das Rendering der Marker auf der Karte reicht es, wenn wir die Daten so lassen.
-
-            // Um den Code stabil zu machen, fügen wir eine leere Gruppenliste hinzu,
-            // falls sie für die Markierung in InteractiveMap.jsx benötigt wird.
             f.properties.groups = [];
         }
         return f;
     });
-};
+  };
 
-  // (triggerSearch und handleSearchClick bleiben unverändert, sie nutzen viewLat/Lng)
-
-  // (DATA FORMATTER bleibt unverändert)
 
   const selectedPlace = mapPlaces.find(p => p.properties.id === selectedPlaceId);
 
   // --- HANDLER FÜR REGISTRIERUNG ---
   const handleRegisterSuccess = (user) => {
+    // Wird aufgerufen, sobald das Registrierungsformular erfolgreich war
     setCurrentUser(user);
   };
 
   // --- FRÜHER RETURN FÜR REGISTRIERUNG ---
   if (!currentUser) {
+    // Das Formular wird IMMER angezeigt, wenn kein aktiver Benutzer vorhanden ist.
     return <RegistrationForm onRegisterSuccess={handleRegisterSuccess} />;
   }
 
@@ -183,7 +166,7 @@ const dataFormatter = (features) => {
 
       {/* SIDEBAR */}
       <div className="sidebar" style={{ color: '#1e293b', display: 'flex', flexDirection: 'column' }}>
-
+        {/* ... Rest der Sidebar-Logik (unverändert) */}
         {/* MAIN TAB SWITCHER */}
         <div style={{display: 'flex', padding: '10px', gap: '10px', background: '#f1f5f9', margin: '10px', borderRadius: '12px'}}>
             <button onClick={() => {setMainTab("search"); setSelectedGlobalGroup(null); setSelectedPlaceId(null);}}

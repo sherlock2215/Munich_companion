@@ -2,14 +2,18 @@
 
 import React, { useState } from 'react';
 import { ApiService } from '../services/api';
-import { User, Lock, Calendar, Globe } from 'lucide-react';
+import { User, Lock, Calendar, Globe } from 'lucide-react'; // LogIn entfernt
 
+// Akzeptiert initialStoredUser als Prop, aber ignoriert diese (oder wir können die Prop in App.jsx entfernen)
+// Ich entferne die Prop hier und in App.jsx, um den Code zu vereinfachen.
 const RegistrationForm = ({ onRegisterSuccess }) => {
     const [name, setName] = useState("");
     const [age, setAge] = useState("");
     const [gender, setGender] = useState("male");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+
+    // storedUser State und handleLogin Funktion werden entfernt
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -36,8 +40,8 @@ const RegistrationForm = ({ onRegisterSuccess }) => {
 
         try {
             const res = await ApiService.registerUser(newUser);
-            // Speichern des Benutzers in LocalStorage für persistente Sitzung
-            localStorage.setItem('currentUser', JSON.stringify(res.user));
+            // WICHTIG: Speichern in LocalStorage ENTFERNT
+            // localStorage.setItem('currentUser', JSON.stringify(res.user));
             onRegisterSuccess(res.user);
         } catch (e) {
             setError(e.message || "Registration failed. Try again.");
@@ -62,7 +66,11 @@ const RegistrationForm = ({ onRegisterSuccess }) => {
                 <h1 style={{margin: '0 0 5px 0', fontSize: '24px', color: '#0f172a'}}>Welcome to Munich Companion!</h1>
                 <p style={{marginBottom: '20px', fontSize: '14px', color: '#64748b'}}>Please register to find local groups.</p>
 
+                {/* WICHTIG: Login-Option ENTFERNT */}
+                {/* {storedUser && ( ... )} */}
+
                 <form onSubmit={handleSubmit} style={{display: 'flex', flexDirection: 'column', gap: '15px'}}>
+                    <h3 style={{margin: '0 0 5px 0', fontSize: '18px', color: '#0f172a'}}>Registration</h3>
                     {/* Name */}
                     <div style={{position: 'relative'}}>
                         <User size={18} color="#94a3b8" style={{position: 'absolute', left: '12px', top: '12px'}}/>
