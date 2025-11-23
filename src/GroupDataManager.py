@@ -17,6 +17,7 @@ load_dotenv()
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 gmaps_client = googlemaps.Client(key=GOOGLE_API_KEY)
 
+
 locations_db: Dict[str, LocationModel] = {}
 DB_LOCK = threading.Lock()
 

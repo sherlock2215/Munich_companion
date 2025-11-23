@@ -18,6 +18,8 @@ class UserModel(BaseModel):
     name: str
     age: int
     gender: str
+    interests: List[str]
+    bio: Optional[str]
 
 class GroupModel(BaseModel):
     group_id: uuid.UUID

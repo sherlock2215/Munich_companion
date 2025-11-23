@@ -88,6 +88,9 @@ app.add_middleware(
 mood_mapper = DirectMoodMapper()
 
 
+
+
+
 @app.get("/map/nearby")
 def get_places_nearby(
         lat: float,
@@ -169,7 +172,7 @@ def chatbot_user_interaction(user_input: str, lat: float, lng: float):
 
 
 @app.get("/chatbot/automatic")
-def chatbot_automatet_interaction(lat: float, lng: float):
+def chatbot_automated_interaction(lat: float, lng: float):
     try:
         location_data = {"lat": lat, "lng": lng}
         response = chatbot.ask("Can you give me any fun facts about my nearby location?", location=location_data)
